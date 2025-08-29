@@ -1,11 +1,8 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras.models import model_from_config
 from tensorflow.keras.preprocessing import image
 import matplotlib.pyplot as plt
-import h5py
-import json
 import os
 
 # ----------------------------
@@ -16,40 +13,25 @@ st.set_page_config(page_title="Fish Image Classification", layout="wide")
 # ----------------------------
 # Constants
 # ----------------------------
-MODEL_PATH = "models/mobilenetv2_best.h5"  # Use your .h5 file
+MODEL_PATH = "models/mobilenetv2_best_tf"  # SavedModel folder
 CLASS_NAMES = ["Bream", "Roach", "Whitefish", "Parkki", "Perch", "Pike", "Smelt"]
 
 # ----------------------------
-# Load model safely (fix batch_shape)
+# Load model
 # ----------------------------
 @st.cache_resource(show_spinner=True)
-def load_model_safe():
+def load_model():
     if not os.path.exists(MODEL_PATH):
-        st.error(f"Model not found: {MODEL_PATH}")
+        st.error(f"Model path not found: {MODEL_PATH}")
         return None
     try:
-        with h5py.File(MODEL_PATH, 'r') as f:
-            model_config = f.attrs.get('model_config')
-        if model_config:
-            # decode only if bytes
-            if isinstance(model_config, bytes):
-                config = json.loads(model_config.decode('utf-8'))
-            else:
-                config = json.loads(model_config)  # already str
-            for layer in config['config']['layers']:
-                if 'batch_shape' in layer['config']:
-                    layer['config'].pop('batch_shape')
-            model = model_from_config(config)
-            model.load_weights(MODEL_PATH)
-        else:
-            model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
     return model
 
-
-model = load_model_safe()
+model = load_model()
 if model is None:
     st.stop()  # Stop execution if model cannot be loaded
 
@@ -70,7 +52,7 @@ def predict_image(uploaded_file):
 # ----------------------------
 # Streamlit UI
 # ----------------------------
-st.title(" Fish Image Classification")
+st.title("🐟 Fish Image Classification")
 
 uploaded_file = st.file_uploader("Upload a fish image...", type=["jpg","jpeg","png"])
 
