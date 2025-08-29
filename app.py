@@ -53,7 +53,7 @@ def predict_image(uploaded_file):
 # ----------------------------
 # Streamlit App Layout
 # ----------------------------
-st.title("🐟 Fish Image Classification")
+st.title(" Fish Image Classification")
 st.write("Upload a fish image and the model will classify it.")
 
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
@@ -61,17 +61,17 @@ uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png
 if uploaded_file is not None:
             pred_class, conf, img = predict_image(uploaded_file)
 
-    col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2)
 
-    with col1:
+            with col1:
                     st.image(img, caption="Uploaded Image", use_container_width=True)
 
-    with col2:
+            with col2:
                     st.subheader("Prediction")
                     st.write(f"**Class:** {pred_class}")
                     st.write(f"**Confidence:** {conf}%")
 
-        # Plot probabilities
+                    # Plot probabilities
                     preds = model.predict(np.expand_dims(image.img_to_array(image.load_img(uploaded_file, target_size=(224,224))) / 255.0, axis=0))
                     fig, ax = plt.subplots()
                     ax.bar(CLASS_NAMES, preds[0])
