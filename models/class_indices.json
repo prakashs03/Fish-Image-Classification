@@ -1,0 +1,10 @@
+# run this locally during training
+import json, os
+
+class_indices = train_gen.class_indices  # dict: {label: index}
+# invert so we can map predictions back to labels
+idx2class = {v: k for k, v in class_indices.items()}
+
+os.makedirs("models", exist_ok=True)
+with open("models/class_indices.json", "w") as f:
+    json.dump(idx2class, f, indent=2)
