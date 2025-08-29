@@ -1,9 +1,7 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras.preprocessing import image
-import matplotlib.pyplot as plt
-import os
+from PIL import Image
 
 # ----------------------------
 # Page config
@@ -11,53 +9,52 @@ import os
 st.set_page_config(page_title="Fish Image Classification", layout="wide")
 
 # ----------------------------
-# Constants
-# ----------------------------
-MODEL_PATH = "models/mobilenetv2_best_tf"
-IMG_SIZE = (224, 224)
-CLASS_NAMES = ['Betta', 'Catfish', 'Goldfish', 'Guppy', 'Koi']  # replace with your actual classes
-
-# ----------------------------
-# Load Model
+# Load Model (SavedModel from export)
 # ----------------------------
 @st.cache_resource(show_spinner=True)
 def load_model():
-    if not os.path.exists(MODEL_PATH):
-        st.error(f"Model path not found: {MODEL_PATH}")
-        return None
-    try:
-        # Load SavedModel format
-        model = tf.keras.models.load_model(MODEL_PATH)
-        return model
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
+    # Load exported SavedModel
+    infer = tf.saved_model.load("models/mobilenetv2_best_tf")
+    return infer
 
 model = load_model()
-if model is None:
-    st.stop()
+
+# ----------------------------
+# Class Names
+# ----------------------------
+CLASS_NAMES = ['Bream', 'Roach', 'Whitefish', 'Parkki', 'Perch']  # Replace with your actual classes
 
 # ----------------------------
 # File Upload
 # ----------------------------
-st.title("Fish Image Classification")
-
-uploaded_file = st.file_uploader("Choose a fish image...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload a fish image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Display the image
-    img = image.load_img(uploaded_file, target_size=IMG_SIZE)
+    # Open image
+    img = Image.open(uploaded_file).convert("RGB")
+    img = img.resize((224, 224))
+    
     st.image(img, caption="Uploaded Image", use_column_width=True)
 
-    # Preprocess
-    img_array = image.img_to_array(img)
+    # Preprocess image
+    img_array = np.array(img, dtype=np.float32)
     img_array = np.expand_dims(img_array, axis=0)
     img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
 
-    # Predict
-    predictions = model.predict(img_array)
-    predicted_class = CLASS_NAMES[np.argmax(predictions)]
-    confidence = np.max(predictions)
+    # ----------------------------
+    # Prediction using SavedModel
+    # ----------------------------
+    predict_fn = model.signatures["serving_default"]
 
-    st.write(f"**Prediction:** {predicted_class}")
-    st.write(f"**Confidence:** {confidence:.2f}")
+    # Convert to tensor
+    img_tensor = tf.convert_to_tensor(img_array)
+
+    # Run prediction
+    output_dict = predict_fn(img_tensor)
+
+    # Check output layer name
+    output_name = list(output_dict.keys())[0]  # usually the dense layer
+    predictions = output_dict[output_name].numpy()
+    predicted_class = CLASS_NAMES[np.argmax(predictions)]
+
+    st.success(f"Predicted Fish Type: {predicted_class}")
