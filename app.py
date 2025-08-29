@@ -44,11 +44,11 @@ def predict_image(uploaded_file):
             img_array = image.img_to_array(img) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
 
-    preds = model.predict(img_array)
-    predicted_class = CLASS_NAMES[np.argmax(preds)]
-    confidence = round(100 * np.max(preds), 2)
+            preds = model.predict(img_array)
+            predicted_class = CLASS_NAMES[np.argmax(preds)]
+            confidence = round(100 * np.max(preds), 2)
 
-    return predicted_class, confidence, img
+            return predicted_class, confidence, img
 
 # ----------------------------
 # Streamlit App Layout
