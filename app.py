@@ -7,7 +7,7 @@ from PIL import Image
 # Page Config
 # ----------------------------
 st.set_page_config(page_title="Fish Image Classification", layout="wide")
-st.title("🐟 Fish Image Classification")
+st.title(" Fish Image Classification")
 
 # ----------------------------
 # Constants
@@ -46,9 +46,10 @@ if uploaded_file and model:
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)  # add batch dimension
 
-        # Make prediction
-        predictions = model.predict(img_array)
-        predicted_class_index = np.argmax(predictions[0])  # get first batch element
+        # Make prediction using call() instead of .predict()
+        predictions = model(img_array, training=False)  # returns a tensor
+        predictions = predictions.numpy()  # convert tensor to numpy array
+        predicted_class_index = np.argmax(predictions[0])
         predicted_class = CLASS_NAMES[predicted_class_index]
 
         # Show prediction
