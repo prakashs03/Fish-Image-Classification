@@ -13,7 +13,7 @@ st.set_page_config(page_title="Fish Image Classification", layout="wide")
 # ----------------------------
 # Constants
 # ----------------------------
-MODEL_PATH = "models/mobilenetv2_best.h5"  # Change if using SavedModel
+MODEL_PATH = "models/mobilenetv2_best_tf"  # SavedModel folder
 CLASS_NAMES = ["Bream", "Roach", "Whitefish", "Parkki", "Perch", "Pike", "Smelt"]
 
 # ----------------------------
@@ -22,21 +22,18 @@ CLASS_NAMES = ["Bream", "Roach", "Whitefish", "Parkki", "Perch", "Pike", "Smelt"
 @st.cache_resource(show_spinner=True)
 def load_model_safe():
     if not os.path.exists(MODEL_PATH):
-        st.error(f"Model file not found at {MODEL_PATH}")
+        st.error(f"Model path not found: {MODEL_PATH}")
         return None
-
     try:
-        # Try loading as H5
         model = tf.keras.models.load_model(MODEL_PATH, compile=False)
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
-
     return model
 
 model = load_model_safe()
 if model is None:
-    st.stop()  # Stop the app if model cannot load
+    st.stop()
 
 # ----------------------------
 # Prediction function
@@ -57,11 +54,10 @@ def predict_image(uploaded_file):
 # ----------------------------
 st.title(" Fish Image Classification")
 
-uploaded_file = st.file_uploader("Upload a fish image...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload a fish image...", type=["jpg","jpeg","png"])
 
 if uploaded_file is not None:
     pred_class, conf, img = predict_image(uploaded_file)
-
     col1, col2 = st.columns(2)
 
     with col1:
@@ -71,10 +67,7 @@ if uploaded_file is not None:
         st.subheader("Prediction")
         st.write(f"**Class:** {pred_class}")
         st.write(f"**Confidence:** {conf}%")
-
-        # Plot probabilities
-        preds = model.predict(np.expand_dims(image.img_to_array(image.load_img(uploaded_file, target_size=(224,224))) / 255.0, axis=0))
         fig, ax = plt.subplots()
-        ax.bar(CLASS_NAMES, preds[0])
+        ax.bar(CLASS_NAMES, model.predict(np.expand_dims(image.img_to_array(image.load_img(uploaded_file, target_size=(224,224))) / 255.0, axis=0))[0])
         ax.set_xticklabels(CLASS_NAMES, rotation=45, ha="right")
         st.pyplot(fig)
