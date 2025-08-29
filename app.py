@@ -28,23 +28,26 @@ def load_model_safe():
         st.error(f"Model not found: {MODEL_PATH}")
         return None
     try:
-        # Open H5, remove unsupported 'batch_shape' in input layers
         with h5py.File(MODEL_PATH, 'r') as f:
             model_config = f.attrs.get('model_config')
         if model_config:
-            config = json.loads(model_config.decode('utf-8'))
+            # decode only if bytes
+            if isinstance(model_config, bytes):
+                config = json.loads(model_config.decode('utf-8'))
+            else:
+                config = json.loads(model_config)  # already str
             for layer in config['config']['layers']:
                 if 'batch_shape' in layer['config']:
                     layer['config'].pop('batch_shape')
             model = model_from_config(config)
             model.load_weights(MODEL_PATH)
         else:
-            # fallback
             model = tf.keras.models.load_model(MODEL_PATH, compile=False)
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
     return model
+
 
 model = load_model_safe()
 if model is None:
