@@ -1,8 +1,0 @@
-import tensorflow as tf
-
-# Load the old .h5 model
-model = tf.keras.models.load_model("models/mobilenetv2_best.h5", compile=False)
-
-# Re-save as a SavedModel folder
-model.save("models/mobilenetv2_best_tf")
-print("Model converted to SavedModel format successfully!")
