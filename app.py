@@ -4,57 +4,55 @@ import numpy as np
 from PIL import Image
 
 # ----------------------------
-# Page config
+# Page Config
 # ----------------------------
 st.set_page_config(page_title="Fish Image Classification", layout="wide")
+st.title("🐟 Fish Image Classification")
 
 # ----------------------------
-# Load Model (SavedModel from export)
+# Constants
+# ----------------------------
+MODEL_PATH = "models/mobilenetv2_best_tf"  # SavedModel folder
+IMAGE_SIZE = (224, 224)
+CLASS_NAMES = ["Betta", "Guppy", "Molly", "Platy", "Goldfish"]  # Update according to your classes
+
+# ----------------------------
+# Load Model
 # ----------------------------
 @st.cache_resource(show_spinner=True)
 def load_model():
-    # Load exported SavedModel
-    infer = tf.saved_model.load("models/mobilenetv2_best_tf")
-    return infer
+    try:
+        model = tf.keras.models.load_model(MODEL_PATH)
+        return model
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None
 
 model = load_model()
 
 # ----------------------------
-# Class Names
-# ----------------------------
-CLASS_NAMES = ['Bream', 'Roach', 'Whitefish', 'Parkki', 'Perch']  # Replace with your actual classes
-
-# ----------------------------
-# File Upload
+# Image Upload
 # ----------------------------
 uploaded_file = st.file_uploader("Upload a fish image", type=["jpg", "jpeg", "png"])
 
-if uploaded_file is not None:
-    # Open image
-    img = Image.open(uploaded_file).convert("RGB")
-    img = img.resize((224, 224))
-    
-    st.image(img, caption="Uploaded Image", use_column_width=True)
+if uploaded_file and model:
+    try:
+        # Open and preprocess image
+        img = Image.open(uploaded_file).convert("RGB")
+        img = img.resize(IMAGE_SIZE)
+        st.image(img, caption="Uploaded Image", use_column_width=True)
 
-    # Preprocess image
-    img_array = np.array(img, dtype=np.float32)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+        # Convert to array and normalize
+        img_array = np.array(img) / 255.0
+        img_array = np.expand_dims(img_array, axis=0)  # add batch dimension
 
-    # ----------------------------
-    # Prediction using SavedModel
-    # ----------------------------
-    predict_fn = model.signatures["serving_default"]
+        # Make prediction
+        predictions = model.predict(img_array)
+        predicted_class_index = np.argmax(predictions[0])  # get first batch element
+        predicted_class = CLASS_NAMES[predicted_class_index]
 
-    # Convert to tensor
-    img_tensor = tf.convert_to_tensor(img_array)
+        # Show prediction
+        st.success(f"Predicted Fish Type: {predicted_class}")
 
-    # Run prediction
-    output_dict = predict_fn(img_tensor)
-
-    # Check output layer name
-    output_name = list(output_dict.keys())[0]  # usually the dense layer
-    predictions = output_dict[output_name].numpy()
-    predicted_class = CLASS_NAMES[np.argmax(predictions)]
-
-    st.success(f"Predicted Fish Type: {predicted_class}")
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
