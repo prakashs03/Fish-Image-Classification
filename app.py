@@ -1,9 +1,7 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras.preprocessing import image
-import matplotlib.pyplot as plt
-import os
+from PIL import Image
 
 # ----------------------------
 # Page config
@@ -13,64 +11,62 @@ st.set_page_config(page_title="Fish Image Classification", layout="wide")
 # ----------------------------
 # Constants
 # ----------------------------
-MODEL_PATH = "models/mobilenetv2_best_tf"  # SavedModel folder
-CLASS_NAMES = ["Bream", "Roach", "Whitefish", "Parkki", "Perch", "Pike", "Smelt"]
+MODEL_PATH = "models/mobilenetv2_best.keras"  # Your converted Keras 3 model
+CLASS_NAMES = ['Betta', 'Gourami', 'Guppy', 'Molly', 'Platy', 'Swordtail', 'Tetra']
 
 # ----------------------------
-# Load model
+# Load Model
 # ----------------------------
 @st.cache_resource(show_spinner=True)
 def load_model():
-    if not os.path.exists(MODEL_PATH):
-        st.error(f"Model path not found: {MODEL_PATH}")
-        return None
     try:
-        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+        loaded = tf.keras.models.load_model(MODEL_PATH)
+        # If it’s a _UserObject, wrap it in a callable model
+        if not hasattr(loaded, "predict"):
+            # For Keras 3, make a new Model wrapper
+            input_layer = loaded.input
+            output_layer = loaded(loaded.input)  # call the user object
+            model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
+            return model
+        return loaded
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
-    return model
 
 model = load_model()
-if model is None:
-    st.stop()  # Stop execution if model cannot be loaded
 
 # ----------------------------
-# Prediction function
-# ----------------------------
-def predict_image(uploaded_file):
-    img = image.load_img(uploaded_file, target_size=(224, 224))
-    img_array = image.img_to_array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-
-    preds = model.predict(img_array)
-    predicted_class = CLASS_NAMES[np.argmax(preds)]
-    confidence = round(100 * np.max(preds), 2)
-
-    return predicted_class, confidence, img, preds[0]
-
-# ----------------------------
-# Streamlit UI
+# App Title
 # ----------------------------
 st.title("🐟 Fish Image Classification")
 
-uploaded_file = st.file_uploader("Upload a fish image...", type=["jpg","jpeg","png"])
+# ----------------------------
+# File uploader
+# ----------------------------
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
-if uploaded_file is not None:
-    pred_class, conf, img, probs = predict_image(uploaded_file)
-    col1, col2 = st.columns(2)
+if uploaded_file and model:
+    try:
+        # Load image
+        img = Image.open(uploaded_file).convert("RGB")
+        st.image(img, caption='Uploaded Image', use_column_width=True)
 
-    with col1:
-        st.image(img, caption="Uploaded Image", use_container_width=True)
+        # Preprocess image
+        img = img.resize((224, 224))
+        img_array = np.array(img) / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
 
-    with col2:
-        st.subheader("Prediction")
-        st.write(f"**Class:** {pred_class}")
-        st.write(f"**Confidence:** {conf}%")
+        # Prediction
+        predictions = model.predict(img_array)
+        predicted_class = CLASS_NAMES[np.argmax(predictions[0])]
+        confidence = np.max(predictions[0])
 
-        # Plot class probabilities
-        fig, ax = plt.subplots()
-        ax.bar(CLASS_NAMES, probs)
-        ax.set_xticklabels(CLASS_NAMES, rotation=45, ha="right")
-        ax.set_ylabel("Probability")
-        st.pyplot(fig)
+        # Display results
+        st.success(f"Predicted Class: {predicted_class}")
+        st.info(f"Confidence: {confidence:.2f}")
+
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
+
+elif not model:
+    st.warning("Model could not be loaded. Please check the path or file.")
