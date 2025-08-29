@@ -13,7 +13,7 @@ st.set_page_config(page_title="Fish Image Classification", layout="wide")
 # ----------------------------
 # Constants
 # ----------------------------
-MODEL_PATH = "models/mobilenetv2_best_tf"  # SavedModel folder
+MODEL_PATH = "models/mobilenetv2_best.h5"  # SavedModel folder
 CLASS_NAMES = ["Bream", "Roach", "Whitefish", "Parkki", "Perch", "Pike", "Smelt"]
 
 # ----------------------------
