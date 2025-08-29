@@ -1,7 +1,6 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras.preprocessing import image
 from PIL import Image
 
 # ----------------------------
@@ -12,8 +11,8 @@ st.set_page_config(page_title="Fish Image Classification", layout="wide")
 # ----------------------------
 # Constants
 # ----------------------------
-MODEL_PATH = "models/mobilenetv2_best.keras"  # Updated .keras model
-CLASS_NAMES = ['Betta', 'Gourami', 'Guppy', 'Molly', 'Platy', 'Swordtail', 'Tetra']  # Example classes
+MODEL_PATH = "models/mobilenetv2_best.keras"  # Your converted Keras 3 model
+CLASS_NAMES = ['Betta', 'Gourami', 'Guppy', 'Molly', 'Platy', 'Swordtail', 'Tetra']
 
 # ----------------------------
 # Load Model
@@ -21,8 +20,15 @@ CLASS_NAMES = ['Betta', 'Gourami', 'Guppy', 'Molly', 'Platy', 'Swordtail', 'Tetr
 @st.cache_resource(show_spinner=True)
 def load_model():
     try:
-        model = tf.keras.models.load_model(MODEL_PATH)
-        return model
+        loaded = tf.keras.models.load_model(MODEL_PATH)
+        # If it’s a _UserObject, wrap it in a callable model
+        if not hasattr(loaded, "predict"):
+            # For Keras 3, make a new Model wrapper
+            input_layer = loaded.input
+            output_layer = loaded(loaded.input)  # call the user object
+            model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
+            return model
+        return loaded
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
