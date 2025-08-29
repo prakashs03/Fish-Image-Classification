@@ -1,5 +1,17 @@
+# Streamlit
 streamlit==1.24.1
+
+# TensorFlow for image classification
 tensorflow==2.14.0
+
+# Numerical computation
 numpy==1.26.0
+
+# Plotting
 matplotlib==3.8.1
+
+# Image handling
 Pillow==10.1.0
+
+# Optional: for faster model loading / caching (if needed)
+h5py==3.9.0
