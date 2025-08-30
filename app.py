@@ -2,8 +2,6 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
-from PIL import Image
-import matplotlib.pyplot as plt
 
 # ----------------------------
 # Page config
@@ -14,56 +12,63 @@ st.set_page_config(page_title="Fish Image Classification", layout="wide")
 # Load Model
 # ----------------------------
 @st.cache_resource(show_spinner=True)
-def load_model():
+def get_model():
     try:
-        model = tf.keras.models.load_model("models/mobilenetv2_best.h5", compile=False)
+        model = tf.keras.models.load_model("models/mobilenetv2_best_tf")
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
 
-model = load_model()
-
-# Class names (update these with your dataset classes)
-CLASS_NAMES = ["Fish_A", "Fish_B", "Fish_C", "Fish_D"]
+model = get_model()
 
 # ----------------------------
-# Preprocess Image
+# Debug: Show model summary & output shape
+# ----------------------------
+if model is not None:
+    st.write(" Model loaded successfully!")
+    st.write("### Model Summary")
+    model.summary(print_fn=lambda x: st.text(x))  # Print inside Streamlit
+    st.write("**Model output shape:**", model.output_shape)
+
+# ----------------------------
+# Image preprocessing
 # ----------------------------
 def preprocess_image(uploaded_file):
-    img = Image.open(uploaded_file).convert("RGB")
-    img = img.resize((224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0) / 255.0
-    return img, img_array
+    try:
+        img = image.load_img(uploaded_file, target_size=(224, 224))
+        img_array = image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+        return img_array
+    except Exception as e:
+        st.error(f"Image preprocessing error: {e}")
+        return None
 
 # ----------------------------
-# App Layout
+# Main App
 # ----------------------------
 st.title(" Fish Image Classification")
-st.write("Upload an image of a fish, and the model will classify it.")
 
 uploaded_file = st.file_uploader("Upload an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None and model is not None:
-    img, img_array = preprocess_image(uploaded_file)
+    img_array = preprocess_image(uploaded_file)
+    if img_array is not None:
+        try:
+            predictions = model(img_array, training=False).numpy()
+            st.write("Raw Predictions:", predictions)
 
-    st.image(img, caption="Uploaded Image", use_column_width=True)
+            predicted_class_index = int(np.argmax(predictions))
+            
+            #  Placeholder CLASS_NAMES – update once we know output shape
+            CLASS_NAMES = ["Class1", "Class2", "Class3"]  
 
-    try:
-        predictions = model.predict(img_array)
-        predicted_class = CLASS_NAMES[np.argmax(predictions)]
-        confidence = round(100 * np.max(predictions), 2)
-
-        st.success(f"**Prediction:** {predicted_class} ({confidence}%)")
-
-        # Show probability distribution
-        fig, ax = plt.subplots()
-        ax.bar(CLASS_NAMES, predictions[0])
-        ax.set_ylabel("Confidence")
-        ax.set_xlabel("Classes")
-        ax.set_title("Prediction Probabilities")
-        st.pyplot(fig)
-
-    except Exception as e:
-        st.error(f"Prediction error: {e}")
+            if predicted_class_index < len(CLASS_NAMES):
+                predicted_class = CLASS_NAMES[predicted_class_index]
+                confidence = np.max(predictions)
+                st.success(f"Predicted: {predicted_class} ({confidence:.2f} confidence)")
+            else:
+                st.error("Prediction error: CLASS_NAMES length does not match model output.")
+        except Exception as e:
+            st.error(f"Prediction error: {e}")
