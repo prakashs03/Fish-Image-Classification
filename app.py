@@ -1,8 +1,8 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-import pandas as pd
 from tensorflow.keras.preprocessing import image
+import matplotlib.pyplot as plt
 
 # ----------------------------
 # Page config
@@ -14,81 +14,65 @@ st.set_page_config(page_title="Fish Image Classification", layout="wide")
 # ----------------------------
 @st.cache_resource(show_spinner=True)
 def get_model():
-    try:
-        model = tf.keras.models.load_model("models/mobilenetv2_best.keras", compile=False)
-        return model
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
+    model = tf.keras.models.load_model("models/mobilenetv2_best.h5", compile=False)
+    return model
 
 model = get_model()
 
 # ----------------------------
-# Class names (from your dataset)
+# Define Classes (11 total)
 # ----------------------------
 class_names = [
-    "fish sea_food red_sea_bream",
-    "fish sea_food horse_mackerel",
-    "fish sea_food black_sea_sprat",
-    "fish sea_food striped_red_mullet",
-    "fish sea_food trout",
-    "fish sea_food gilt_head_bream",
-    "fish sea_food sea_bass",
-    "fish sea_food shrimp"
+    "animal fish",
+    "animal fish bass",
+    "black sea sprat",
+    "gilt head bream",
+    "hourse mackerel",
+    "red mullet",
+    "red sea bream",
+    "sea bass",
+    "shrimp",
+    "striped red mullet",
+    "trout"
 ]
 
-# Clean labels for display
-def clean_label(label):
-    return label.replace("fish", "").replace("sea_food", "").replace("_", " ").strip().title()
-
 # ----------------------------
-# Preprocess image
-# ----------------------------
-def preprocess_image(img):
-    img = img.resize((224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
-    return img_array
-
-# ----------------------------
-# Prediction
+# Prediction Function
 # ----------------------------
 def predict(img):
     try:
-        img_array = preprocess_image(img)
-        preds = model.predict(img_array)[0]
+        img = image.load_img(img, target_size=(224, 224))
+        img_array = image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
 
-        # Top-k results
-        top_k = 3
-        top_indices = preds.argsort()[-top_k:][::-1]
-        results = [(class_names[i], preds[i] * 100) for i in top_indices]
-        return results
+        predictions = model.predict(img_array)
+        predicted_class = np.argmax(predictions[0])
+        confidence = predictions[0][predicted_class] * 100
+
+        return class_names[predicted_class], confidence, predictions[0]
     except Exception as e:
-        st.error(f"Prediction error: {e}")
-        return None
+        return None, None, str(e)
 
 # ----------------------------
 # Streamlit UI
 # ----------------------------
-st.title(" Fish Image Classification")
+st.title(" Fish Image Classification (11 Classes)")
 st.write("Upload an image of a fish and the model will classify it.")
 
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    from PIL import Image
-    img = Image.open(uploaded_file).convert("RGB")
+    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
 
-    st.image(img, caption="Uploaded Image", use_column_width=True)
+    label, confidence, all_preds = predict(uploaded_file)
 
-    if model:
-        results = predict(img)
+    if label is not None:
+        st.success(f"Prediction: **{label}** ({confidence:.2f}% confidence)")
 
-        if results:
-            df = pd.DataFrame(results, columns=["Class", "Confidence (%)"])
-            df["Class"] = df["Class"].apply(clean_label)
-            df["Confidence (%)"] = df["Confidence (%)"].map(lambda x: f"{x:.2f}%")
-
-            st.write("### Prediction Results")
-            st.table(df)
+        # Show full probability table
+        st.subheader("Prediction Results")
+        results = {class_names[i]: f"{all_preds[i]*100:.2f}%" for i in range(len(class_names))}
+        st.table(results.items())
+    else:
+        st.error(f"Prediction error: {all_preds}")
