@@ -57,7 +57,7 @@ def predict(img):
 # ----------------------------
 # Streamlit UI
 # ----------------------------
-st.title(" Fish Image Classification (11 Classes)")
+st.title(" Fish Image Classification ")
 st.write("Upload an image of a fish and the model will classify it.")
 
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
