@@ -71,15 +71,14 @@ if uploaded_file is not None:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.image(img, caption="📸 Uploaded Image", use_container_width=True)
+        # Convert PIL image to array before showing
+        st.image(np.array(img), caption="📸 Uploaded Image", use_container_width=True)
 
     with col2:
         st.subheader("🎯 Prediction Results")
 
-        # Show top prediction
         st.success(f"**Predicted Class:** {top_classes[0]} ({top_confs[0]:.2f}%)")
 
-        # Show top 3 predictions
         st.write("### 🔝 Top 3 Predictions:")
         for i in range(3):
             st.write(f"{i+1}. {top_classes[i]} — {top_confs[i]:.2f}%")
