@@ -6,7 +6,7 @@ import os
 import matplotlib.pyplot as plt
 
 # Load trained model
-MODEL_PATH = "best_model.h5"   # update if you saved with another name
+MODEL_PATH = "models/mobilenetv2_best.h5"   # update if you saved with another name
 model = tf.keras.models.load_model(MODEL_PATH)
 
 # Define class labels (same order as training)
