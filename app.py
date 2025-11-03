@@ -71,8 +71,8 @@ if uploaded_file is not None:
     col1, col2 = st.columns(2)
 
     with col1:
-        # Convert PIL image to array before showing
-        st.image(np.array(img), caption="📸 Uploaded Image", use_container_width=True)
+        # ✅ Display directly from uploaded file buffer (stable for Streamlit Cloud)
+        st.image(uploaded_file, caption="📸 Uploaded Image", use_container_width=True)
 
     with col2:
         st.subheader("🎯 Prediction Results")
@@ -83,7 +83,7 @@ if uploaded_file is not None:
         for i in range(3):
             st.write(f"{i+1}. {top_classes[i]} — {top_confs[i]:.2f}%")
 
-        # Bar chart for top 3
+        # Bar chart for top 3 predictions
         fig, ax = plt.subplots()
         ax.barh(top_classes[::-1], top_confs[::-1], color='skyblue')
         ax.set_xlabel("Confidence (%)")
