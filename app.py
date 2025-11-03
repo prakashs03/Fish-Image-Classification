@@ -5,12 +5,12 @@ from tensorflow.keras.preprocessing import image
 import matplotlib.pyplot as plt
 
 # ----------------------------
-# Page config
+# Page Configuration
 # ----------------------------
 st.set_page_config(page_title="Fish Image Classification", layout="wide")
 
 # ----------------------------
-# Load Model
+# Load the Model
 # ----------------------------
 @st.cache_resource(show_spinner=True)
 def get_model():
@@ -20,9 +20,9 @@ def get_model():
 model = get_model()
 
 # ----------------------------
-# Define Classes (11 total)
+# Class Labels
 # ----------------------------
-class_names = [
+CLASS_NAMES = [
     "animal fish",
     "animal fish bass",
     "black sea sprat",
@@ -39,40 +39,54 @@ class_names = [
 # ----------------------------
 # Prediction Function
 # ----------------------------
-def predict(img):
-    try:
-        img = image.load_img(img, target_size=(224, 224))
-        img_array = image.img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0)
-        img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+def predict_image(uploaded_file):
+    # Load and preprocess image
+    img = image.load_img(uploaded_file, target_size=(224, 224))
+    img_array = image.img_to_array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
 
-        predictions = model.predict(img_array)
-        predicted_class = np.argmax(predictions[0])
-        confidence = predictions[0][predicted_class] * 100
+    # Get predictions
+    preds = model.predict(img_array)
+    preds = preds[0]  # Flatten the array
 
-        return class_names[predicted_class], confidence, predictions[0]
-    except Exception as e:
-        return None, None, str(e)
+    # Get top 3 predictions
+    top_3_idx = preds.argsort()[-3:][::-1]
+    top_3_classes = [CLASS_NAMES[i] for i in top_3_idx]
+    top_3_confs = [preds[i] * 100 for i in top_3_idx]
+
+    # Return top prediction and top 3
+    return top_3_classes, top_3_confs, img
 
 # ----------------------------
-# Streamlit UI
+# Streamlit App Layout
 # ----------------------------
-st.title(" Fish Image Classification ")
-st.write("Upload an image of a fish and the model will classify it.")
+st.title("🐟 Fish Image Classification")
+st.write("Upload a fish image and let the model identify its species!")
 
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+    top_classes, top_confs, img = predict_image(uploaded_file)
 
-    label, confidence, all_preds = predict(uploaded_file)
+    col1, col2 = st.columns(2)
 
-    if label is not None:
-        st.success(f"Prediction: **{label}** ({confidence:.2f}% confidence)")
+    with col1:
+        st.image(img, caption="📸 Uploaded Image", use_container_width=True)
 
-        # Show full probability table
-        st.subheader("Prediction Results")
-        results = {class_names[i]: f"{all_preds[i]*100:.2f}%" for i in range(len(class_names))}
-        st.table(results.items())
-    else:
-        st.error(f"Prediction error: {all_preds}")
+    with col2:
+        st.subheader("🎯 Prediction Results")
+
+        # Show top prediction
+        st.success(f"**Predicted Class:** {top_classes[0]} ({top_confs[0]:.2f}%)")
+
+        # Show top 3 predictions
+        st.write("### 🔝 Top 3 Predictions:")
+        for i in range(3):
+            st.write(f"{i+1}. {top_classes[i]} — {top_confs[i]:.2f}%")
+
+        # Bar chart for top 3
+        fig, ax = plt.subplots()
+        ax.barh(top_classes[::-1], top_confs[::-1], color='skyblue')
+        ax.set_xlabel("Confidence (%)")
+        ax.set_title("Top 3 Predicted Classes")
+        st.pyplot(fig)
